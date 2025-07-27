@@ -16,7 +16,7 @@ This version introduces several significant enhancements over the original imple
 
 ## Tests & Results
 
-We conducted a test on **IMO Problem 1** using `azure/gpt-4.1`. The complete log of this run can be found in `run_logs/my_solution_01_agent_run_step_10.log`.
+We conducted a test on **IMO Problem 1** using `azure/gpt-4.1`. The complete log of this run can be found in `run_logs/gpt4.1_solution_01_agent_run_step_10.log`.
 
 When compared with results from Gemini 2.5 Pro, we observed that Gemini produced the correct answer, while GPT-4.1's solution was incorrect.
 
