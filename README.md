@@ -1,156 +1,94 @@
-# IMO 2025 Problem Solver
+# IMO Problem-Solving Agent Framework
 
-A parallel AI agent system for solving International Mathematical Olympiad (IMO) problems using Google's Gemini API.
+This project provides a framework for building and evaluating Large Language Model (LLM) agents designed to solve International Mathematical Olympiad (IMO) problems. It is an evolution of the work from [Google's IMO25 repository](https://github.com/lyang36/IMO25), refactored for greater flexibility and extensibility.
 
-## Overview
+## Purpose
 
-This project consists of two main components:
-- `agent.py`: A single AI agent that attempts to solve IMO problems
-- `run_parallel.py`: A parallel execution system that runs multiple agents simultaneously
+The primary goal of this framework is not just to find correct answers to IMO problems, but to provide a standardized environment for testing, comparing, and analyzing the reasoning capabilities of different LLMs on complex, multi-step mathematical problems.
 
-## Prerequisites
+## Key Improvements
 
-1. **Python 3.7+** installed on your system
-2. **Google Gemini API key** - Get one from [Google AI Studio](https://aistudio.google.com/app/apikey)
-3. **Required Python packages**:
-   ```bash
-   pip install requests
-   ```
+This version introduces several significant enhancements over the original implementation:
 
-## Setup
+-   **Multi-Model Support via LiteLLM**: Integrated `litellm` as a universal routing layer, allowing seamless switching between various models (e.g., GPT, Gemini, Claude, DeepSeek) without code changes.
+-   **Declarative Workflow with LangGraph**: Re-architected the agent's reasoning process using `langgraph`. This provides a clear, visual, and modular workflow that is easy to understand, modify, and extend.
+-   **Enhanced Code Structure**: The codebase has been refactored for better clarity, modularity, and maintainability.
 
-1. **Clone or download the project files**
-2. **Set up your API key**:
-   - Create a `.env` file in the project directory
-   - Add your API key: `GOOGLE_API_KEY=your_api_key_here`
-   - Or set it as an environment variable: `export GOOGLE_API_KEY=your_api_key_here`
+## Tests & Results
 
-## Usage
+We conducted a test on **IMO Problem 1** using `azure/gpt-4.1`. The complete log of this run can be found in `run_logs/my_solution_01_agent_run_step_10.log`.
 
-### Single Agent (`agent.py`)
+When compared with results from Gemini 2.5 Pro, we observed that Gemini produced the correct answer, while GPT-4.1's solution was incorrect.
 
-Run a single agent to solve an IMO problem:
+## Getting Started
 
-```bash
-python agent.py problem.txt [options]
+### Prerequisites
+
+-   Python 3.8+
+-   An LLM API key (e.g., for OpenAI, Anthropic, Google AI Studio)
+
+### Installation
+
+1.  **Clone the repository:**
+    ```sh
+    git clone <repository-url>
+    cd <repository-folder>
+    ```
+
+2.  **Set up a virtual environment and install dependencies:**
+    ```sh
+    python -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+    ```
+
+3.  **Configure your environment:**
+    Copy the example environment file and add your API keys.
+    ```sh
+    cp .env.example .env
+    # Edit .env with your credentials
+    ```
+
+### Running the Agent
+
+To run the agent on a problem, use the `refactored_agent.py` script.
+
+**Example Command:**
+
+```sh
+python code/refactored_agent.py problems/imo01.txt \
+  --model azure/gpt-4.1 \
+  --temperature 0.1 \
+  --max-runs 10 \
+  -l run_logs/my_solution_01_agent_10.log
 ```
 
-**Arguments:**
-- `problem.txt`: Path to the problem statement file (required); imo2025 problems are in `problems`
+## Agent Workflow
 
-**Options:**
-- `--log LOG_FILE`: Specify a log file for output (default: prints to console)
-- `--other_prompts PROMPTS`: Additional prompts separated by commas
+The agent's logic is orchestrated by the following LangGraph workflow. This graph defines the sequence of steps the agent takes to generate, refine, and verify a solution, including the conditions for terminating the process.
 
-**Example:**
-```bash
-python agent.py imo2025_p1.txt --log agent_output.log
+The process terminates when a solution is successfully verified `N` consecutive times, or when the cumulative number of failures reaches a limit of `M`.
+
+```mermaid
+graph TD
+    A[Start] --> B[Initial Solution];
+    B --> C[Self Improvement];
+    C --> D{Completeness Check};
+    D -->|Incomplete| A;
+    D -->|Complete| E[Verification];
+    E -->|Passed| F{Continous Successes >= N?};
+    F -->|Yes| G[END];
+    F -->|No| E;
+    E -->|Failed| H{Failures >= M?};
+    H -->|Yes| G;
+    H -->|No| I[Correction];
+    I --> D;
 ```
 
-### Parallel Execution (`run_parallel.py`)
+## Future Work
 
-Run multiple agents in parallel to increase the chance of finding a solution:
+This framework is a work in progress. Key areas for future exploration include:
 
-```bash
-python run_parallel.py problem.txt [options]
-```
-
-**Arguments:**
-- `problem.txt`: Path to the problem statement file (required)
-
-**Options:**
-- `--num-agents N` or `-n N`: Number of parallel agents (default: 10)
-- `--log-dir DIR` or `-d DIR`: Directory for log files (default: logs)
-- `--timeout SECONDS` or `-t SECONDS`: Timeout per agent in seconds (default: no timeout)
-- `--max-workers N` or `-w N`: Maximum worker processes (default: number of agents)
-- `--other_prompts PROMPTS` or `-o PROMPTS`: Additional prompts separated by commas
-
-**Examples:**
-```bash
-# Run 20 agents with 5-minute timeout each
-python run_parallel.py imo2025_p1.txt -n 20 -t 300
-
-# Run 5 agents with custom log directory
-python run_parallel.py imo2025_p1.txt -n 5 -d my_logs
-
-# Run with additional prompts
-python run_parallel.py imo2025_p1.txt -n 15 -o "focus_on_geometry,use_induction"
-```
-
-## Problem File Format
-See the `problems` folder.
-
-## Output and Logging
-
-### Single Agent
-- Output is printed to console by default
-- Use `--log` to save output to a file
-- The agent will indicate if a complete solution was found
-
-### Parallel Execution
-- Each agent creates a separate log file in the specified directory
-- Progress is shown in real-time
-- Final summary shows:
-  - Total execution time
-  - Number of successful/failed agents
-  - Success rate
-  - Which agent found a solution (if any)
-  - Location of log files
-
-## Understanding the Output
-
-### Solution Detection
-The system looks for the phrase "Found a correct solution in run" to identify successful solutions.
-
-### Agent Behavior
-- Agents use Google's Gemini 2.5 Pro model
-- Each agent follows a structured approach with multiple attempts
-- Solutions are verified for completeness and correctness
-- Agents can provide partial solutions if complete solutions aren't found
-
-## Tips for Best Results
-
-1. **Problem Formatting**: Ensure your problem file is clear and well-formatted
-2. **Parallel Execution**: Use more agents for harder problems (10-20 agents recommended)
-3. **Timeout Settings**: Set reasonable timeouts (you may set no timeout)
-4. **API Limits**: Be aware of Google API rate limits and costs
-5. **Log Analysis**: Check individual agent logs for detailed reasoning
-
-## Troubleshooting
-
-### Common Issues
-
-1. **API Key Error**: Ensure your Google API key is properly set
-2. **Timeout Issues**: Increase timeout or reduce number of agents
-3. **Memory Issues**: Reduce max-workers if running out of memory
-4. **No Solutions Found**: Try running more agents or check problem clarity
-
-### Debug Mode
-Add verbose logging by modifying the agent code or check individual log files for detailed output.
-
-## License
-
-MIT License - Copyright (c) 2025 Lin Yang, Yichen Huang
-
-This software is provided as-is. Users are free to copy, modify, and distribute the code with proper attribution.
-
-## Contributing
-
-Feel free to submit issues, feature requests, or pull requests to improve the system.
-
-## Disclaimer
-
-This tool is for educational and research purposes. Success in solving IMO problems depends on problem difficulty and AI model capabilities. Not all problems may be solvable by the current system.
-
-## Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@article{huang2025gemini,
-  title={Gemini 2.5 Pro Capable of Winning Gold at IMO 2025},
-  author={Huang, Yichen and Yang, Lin F},
-  journal={arXiv preprint arXiv:2507.15855},
-  year={2025}
-}
-``` 
+-   **Prompt Engineering**: Can the reasoning gaps observed in models like GPT-4.1 be bridged with more sophisticated prompting strategies?
+-   **Model Evaluation**: We encourage the community to contribute evaluations for other models, such as DeepSeek's latest releases.
+-   **Advanced Tooling**: Integrating tools for symbolic math, code execution, or formal verification to augment the agent's capabilities.
